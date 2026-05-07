@@ -25,7 +25,7 @@ train['precip_lag7']          = train.groupby('district')['precipitation'].shift
 drop_cols = ['date', 'district', 'flood_event',
              'water_area_km2', 'water_area_change',
              'water_area_pct_change', 'ds_idx',
-             'soil_x_water', 'water_lag1', 'rain_x_elevation']
+             'soil_x_water', 'water_lag1', 'rain_x_elevation' , 'year']
 
 X = train.drop(columns=drop_cols)
 y = train['flood_event']
@@ -132,3 +132,41 @@ joblib.dump(X_train.columns.tolist(), 'model_features.pkl')
 
 print("Model saved to floodsense_model.pkl")
 print("Features saved to model_features.pkl")
+
+
+
+
+
+
+#
+# train_full = train.copy()
+# train_full['prob'] = xgb_model.predict_proba(X)[:, 1]
+# train_full['confidence'] = (train_full['prob'] * 100).round(1)
+# train_full['risk'] = train_full['prob'].apply(lambda p: get_risk_level(p)[0])
+#
+# print("\n" + "="*60)
+# print("REAL FLOOD EVENTS FLAGGED HIGH/CRITICAL")
+# print("="*60)
+#
+# flood_flagged = train_full[
+#     (train_full['flood_event'] == 1) &
+#     (train_full['risk'].isin(['High', 'Critical']))
+# ]
+#
+# print(flood_flagged[['date','district','precipitation',
+#                       'soil_moisture','confidence','risk']].head(10).to_string())
+#
+# print(f"\nCorrectly flagged: {len(flood_flagged)}")
+# print(f"Total flood events: {(train_full['flood_event']==1).sum()}")
+#
+# print("\n" + "="*60)
+# print("HIGHEST RAINFALL FLOOD EVENTS IN SINDH")
+# print("="*60)
+#
+# sindh = train_full[
+#     (train_full['district'] == 'Sindh_District') &
+#     (train_full['flood_event'] == 1)
+# ].sort_values('precipitation', ascending=False)
+#
+# print(sindh[['date','precipitation','soil_moisture',
+#              'confidence','risk']].head(10).to_string())
