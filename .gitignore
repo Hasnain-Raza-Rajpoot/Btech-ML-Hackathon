@@ -1,2 +1,4 @@
 *.py
 temp.ipynb
+temp_files/
+temp.md
