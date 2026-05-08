@@ -9,3 +9,5 @@ scikit-learn
 lightgbm
 optuna
 shap
+streamlit
+plotly
