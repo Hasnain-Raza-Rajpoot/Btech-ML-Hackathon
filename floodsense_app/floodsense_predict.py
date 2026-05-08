@@ -226,26 +226,45 @@ ACTIONS = {
 # LAZY-LOADED ARTIFACTS
 # -----------------------------------------------------------------------------
 _artifacts = {}
+_artifacts_loaded = False  # only set True after ALL loads succeed
 
 def _load_artifacts():
-    if _artifacts:
+    """Load all model artifacts atomically.
+
+    If any individual load fails, clear the partial state and re-raise the
+    original exception so the failure is visible. Without this, a partial
+    fill of `_artifacts` causes downstream KeyErrors that mask the root cause.
+    """
+    global _artifacts_loaded
+    if _artifacts_loaded:
         return _artifacts
-    _artifacts["cont_model"]  = lgb.Booster(model_file=os.path.join(MODELS_DIR, "lgb_continuation_final.txt"))
-    _artifacts["onset_model"] = lgb.Booster(model_file=os.path.join(MODELS_DIR, "lgb_onset_final.txt"))
-    with open(os.path.join(MODELS_DIR, "shap_explainer_continuation.pkl"), "rb") as f:
-        _artifacts["cont_explainer"] = pickle.load(f)
-    with open(os.path.join(MODELS_DIR, "shap_explainer_onset.pkl"), "rb") as f:
-        _artifacts["onset_explainer"] = pickle.load(f)
-    with open(os.path.join(MODELS_DIR, "feature_cols.pkl"), "rb") as f:
-        _artifacts["feature_cols"] = pickle.load(f)
 
-    lookup = pd.read_csv(LOOKUP_PATH)
-    lookup["date"] = pd.to_datetime(lookup["date"])
-    _artifacts["lookup"] = lookup
+    try:
+        _artifacts["cont_model"]  = lgb.Booster(model_file=os.path.join(MODELS_DIR, "lgb_continuation_final.txt"))
+        _artifacts["onset_model"] = lgb.Booster(model_file=os.path.join(MODELS_DIR, "lgb_onset_final.txt"))
+        with open(os.path.join(MODELS_DIR, "shap_explainer_continuation.pkl"), "rb") as f:
+            _artifacts["cont_explainer"] = pickle.load(f)
+        with open(os.path.join(MODELS_DIR, "shap_explainer_onset.pkl"), "rb") as f:
+            _artifacts["onset_explainer"] = pickle.load(f)
+        with open(os.path.join(MODELS_DIR, "feature_cols.pkl"), "rb") as f:
+            _artifacts["feature_cols"] = pickle.load(f)
 
-    # Phase D-2: load OOF onset predictions for trajectory computation
-    oof_path = os.path.join(MODELS_DIR, "oof_preds_onset.npy")
-    _artifacts["oof_preds_onset"] = np.load(oof_path) if os.path.exists(oof_path) else None
+        if not os.path.exists(LOOKUP_PATH):
+            raise FileNotFoundError(f"Required data file missing: {LOOKUP_PATH}")
+        lookup = pd.read_csv(LOOKUP_PATH)
+        lookup["date"] = pd.to_datetime(lookup["date"])
+        _artifacts["lookup"] = lookup
+
+        # OOF predictions for trajectory computation (optional but recommended)
+        oof_path = os.path.join(MODELS_DIR, "oof_preds_onset.npy")
+        _artifacts["oof_preds_onset"] = np.load(oof_path) if os.path.exists(oof_path) else None
+
+        _artifacts_loaded = True
+    except Exception:
+        # Clear partial state so the next call retries from scratch
+        _artifacts.clear()
+        raise
+
     return _artifacts
 
 
@@ -420,13 +439,22 @@ def _explain(model_name, X_row, top_k=5):
     for idx in order:
         feat = feature_cols[idx]
         label = FEATURE_DESCRIPTIONS.get(feat, feat.replace("_", " ").title())
-        value = X_row.iloc[0][feat]
+        raw_value = X_row.iloc[0][feat]
+        # Format NaN gracefully — happens when forward fallback lands on the first
+        # row of a district's data, where lag features have no prior value
+        if pd.isna(raw_value):
+            value_display = "data unavailable"
+            value_float = float("nan")
+        else:
+            value_display = f"{float(raw_value):.2f}"
+            value_float = float(raw_value)
         contribution = sv[idx]
         sign = "↑" if contribution > 0 else "↓"
         drivers.append({
-            "feature": feat, "label": label, "value": float(value),
+            "feature": feat, "label": label,
+            "value": value_float, "value_display": value_display,
             "shap": float(contribution), "sign": sign,
-            "text": f"{sign} {label}: {value:.2f}",
+            "text": f"{sign} {label}: {value_display}",
         })
     return drivers
 
