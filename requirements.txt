@@ -7,3 +7,5 @@ ipykernel
 jupyter
 scikit-learn
 lightgbm
+optuna
+shap

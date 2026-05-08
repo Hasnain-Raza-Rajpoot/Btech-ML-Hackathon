@@ -1,0 +1,24 @@
+{
+  "continuation": {
+    "best_params": {
+      "num_leaves": 20,
+      "min_data_in_leaf": 5,
+      "feature_fraction": 0.8866876305603675,
+      "bagging_fraction": 0.752613643399555,
+      "lambda_l1": 0.0023561711719811496,
+      "lambda_l2": 0.006584255446714257
+    },
+    "cv_auc": 0.9688527965565757
+  },
+  "onset": {
+    "best_params": {
+      "num_leaves": 21,
+      "min_data_in_leaf": 22,
+      "feature_fraction": 0.6037596637978375,
+      "bagging_fraction": 0.8620980599158715,
+      "lambda_l1": 0.008457088322556625,
+      "lambda_l2": 0.2444436163607056
+    },
+    "cv_auc": 0.946842756162324
+  }
+}
