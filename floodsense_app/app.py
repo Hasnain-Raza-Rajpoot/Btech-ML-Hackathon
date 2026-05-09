@@ -198,6 +198,46 @@ hr {
 .context-at-risk-high  { color: #DC2626; }
 .context-at-risk-low   { color: #16A34A; }
 
+/* ==========  ALERT MODE BANNER (Scenario 3 bonus)  ========== */
+.alert-mode-banner {
+    border-radius: 14px;
+    padding: 24px 30px;
+    margin-bottom: 20px;
+    color: white;
+    border-left: 8px solid white;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+    animation: alertPulse 2s ease-in-out infinite;
+}
+.alert-mode-critical { background: linear-gradient(135deg, #DC2626, #991B1B); }
+.alert-mode-high     { background: linear-gradient(135deg, #EA580C, #9A3412); }
+.alert-mode-header {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2.5px;
+    opacity: 0.95;
+    margin-bottom: 8px;
+}
+.alert-mode-title {
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1.15;
+    margin-bottom: 14px;
+}
+.alert-mode-action {
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.5;
+    background: rgba(255,255,255,0.18);
+    padding: 12px 16px;
+    border-radius: 8px;
+    border-left: 4px solid white;
+}
+@keyframes alertPulse {
+    0%, 100% { box-shadow: 0 6px 20px rgba(0,0,0,0.15); }
+    50%      { box-shadow: 0 6px 28px rgba(220,38,38,0.45); }
+}
+
 /* ==========  WARNING & INPUT POLISH  ========== */
 .warning-banner {
     background: #FEF3C7;
@@ -345,6 +385,78 @@ def apply_scenario(scenario):
     st.session_state.in_water    = scenario["water_visible"]
 
 
+def render_alert_mode_banner(result, selected_district):
+    """Scenario 3 bonus: Alert Mode for High/Critical districts.
+
+    Activates automatically. Visible above the fold. Plain-language action
+    for non-technical PDMA officials. Lightweight (no images) for slow internet.
+    """
+    risk_level = result["risk_level"]
+    if risk_level not in ("High", "Critical"):
+        return  # Only show for High/Critical, per scenario spec
+
+    # Plain-language one-line recommended action for non-technical users
+    ALERT_ACTIONS = {
+        "Critical": ("IMMEDIATE EVACUATION REQUIRED. Deploy rescue teams. "
+                     "Activate provincial emergency response. Open all designated shelters."),
+        "High":     ("Issue evacuation advisory for low-lying areas. "
+                     "Open emergency shelters. Pre-position relief supplies. Increase monitoring frequency."),
+    }
+
+    district_label = DISTRICT_DISPLAY.get(selected_district, selected_district)
+    district_label = district_label.split("  ")[0]  # strip "(training data)" suffix
+
+    severity_class = f"alert-mode-{risk_level.lower()}"
+
+    html = f"""
+    <div class="alert-mode-banner {severity_class}">
+        <div class="alert-mode-header">🚨 Alert Mode Activated</div>
+        <div class="alert-mode-title">{district_label} — {risk_level.upper()} RISK</div>
+        <div class="alert-mode-action">
+            <strong>Recommended Action:</strong> {ALERT_ACTIONS[risk_level]}
+        </div>
+    </div>
+    """
+    st.markdown(html, unsafe_allow_html=True)
+
+def render_compact_alert_card(alert):
+    """Compact alert card for the system-wide alert dashboard.
+    Shows district name, risk level, and one-line recommended action."""
+
+    risk_level = alert["risk_level"]
+    ALERT_ACTIONS = {
+        "Critical": "IMMEDIATE EVACUATION. Deploy rescue teams. Open all designated shelters. Activate provincial emergency response.",
+        "High":     "Issue evacuation advisory for low-lying areas. Open emergency shelters. Pre-position relief supplies.",
+    }
+
+    district_label = DISTRICT_DISPLAY.get(alert["district"], alert["district"]).split("  ")[0]
+    severity_class = f"alert-mode-{risk_level.lower()}"
+
+    html = f"""
+    <div class="alert-mode-banner {severity_class}" style="margin-bottom: 12px; padding: 18px 22px;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 20px;">
+            <div style="flex: 1;">
+                <div class="alert-mode-header" style="margin-bottom: 4px;">
+                    🚨 {risk_level.upper()} RISK
+                </div>
+                <div style="font-size: 22px; font-weight: 800; line-height: 1.1; margin-bottom: 10px;">
+                    {district_label}
+                </div>
+                <div class="alert-mode-action" style="font-size: 14px;">
+                    <strong>Action:</strong> {ALERT_ACTIONS[risk_level]}
+                </div>
+            </div>
+            <div style="text-align: right; min-width: 90px;">
+                <div style="font-size: 32px; font-weight: 800; line-height: 1;">{alert['confidence']}%</div>
+                <div style="font-size: 10px; opacity: 0.85; letter-spacing: 1.5px; text-transform: uppercase; margin-top: 4px;">
+                    Confidence
+                </div>
+            </div>
+        </div>
+    </div>
+    """
+    st.markdown(html, unsafe_allow_html=True)
+
 # -----------------------------------------------------------------------------
 # OUTPUT RENDERERS
 # -----------------------------------------------------------------------------
@@ -490,6 +602,79 @@ def render_warning(result):
 st.title("🌊 FloodSense")
 st.caption("AI-powered flood early-warning system for Pakistan")
 
+# -----------------------------------------------------------------------------
+# SCENARIO 3 BONUS — SYSTEM-WIDE ALERT MODE DASHBOARD
+# Activates automatically on page load. Shows all districts at High/Critical
+# risk with plain-language recommended actions. Visible without scrolling.
+# -----------------------------------------------------------------------------
+
+# Districts being live-monitored (mix of provinces, mix of dates from real flood events)
+LIVE_MONITORING = [
+    {"district": "Sindh_District",       "date": date(2022, 9, 8),  "rainfall": 85.0, "soil": "Saturated", "water_visible": True},
+    {"district": "Balochistan_District", "date": date(2022, 9, 5),  "rainfall": 60.0, "soil": "Saturated", "water_visible": True},
+    {"district": "KP_District",          "date": date(2024, 6, 29), "rainfall": 70.0, "soil": "Saturated", "water_visible": True},
+    {"district": "Nowshera",             "date": date(2024, 7, 15), "rainfall": 60.0, "soil": "Saturated", "water_visible": True},
+    {"district": "Buner",                "date": date(2024, 8, 15), "rainfall": 75.0, "soil": "Saturated", "water_visible": True},
+    {"district": "Hyderabad",            "date": date(2022, 8, 30), "rainfall": 55.0, "soil": "Saturated", "water_visible": True},
+    {"district": "Karachi",              "date": date(2022, 9, 1),  "rainfall": 45.0, "soil": "Moist",     "water_visible": True},
+    {"district": "Lahore",               "date": date(2024, 7, 1),  "rainfall": 12.0, "soil": "Dry",       "water_visible": False},
+]
+
+@st.cache_data(show_spinner=False)
+def run_alert_scan():
+    """Scan all monitored districts and return only those at High/Critical risk."""
+    active = []
+    for m in LIVE_MONITORING:
+        try:
+            r = predict_flood_risk(
+                date=str(m["date"]),
+                district=m["district"],
+                rainfall_today=m["rainfall"],
+                soil_condition=m["soil"],
+                water_visible=m["water_visible"],
+            )
+            if r["risk_level"] in ("High", "Critical"):
+                active.append({
+                    "district":   m["district"],
+                    "risk_level": r["risk_level"],
+                    "confidence": r["confidence"],
+                })
+        except Exception:
+            continue
+    # Sort Critical first, then High
+    active.sort(key=lambda x: 0 if x["risk_level"] == "Critical" else 1)
+    return active
+
+# Header for the alert section
+st.markdown("### 🚨 Active Flood Alerts — System Overview")
+alert_col1, alert_col2 = st.columns([5, 1], gap="medium")
+with alert_col1:
+    st.caption(f"Scanning {len(LIVE_MONITORING)} monitored districts. Districts at High or Critical risk are listed below with recommended action.")
+with alert_col2:
+    rescan = st.button("🔄 Re-scan", use_container_width=True, key="rescan_btn")
+
+if rescan:
+    st.cache_data.clear()  # force refresh
+
+active_alerts = run_alert_scan()
+
+if active_alerts:
+    # Summary line
+    crit_count = sum(1 for a in active_alerts if a["risk_level"] == "Critical")
+    high_count = sum(1 for a in active_alerts if a["risk_level"] == "High")
+    summary_parts = []
+    if crit_count: summary_parts.append(f"**{crit_count} CRITICAL**")
+    if high_count: summary_parts.append(f"**{high_count} HIGH**")
+    st.markdown(f"#### {' · '.join(summary_parts)} risk districts require immediate action")
+
+    # Render each alert as a compact card
+    for alert in active_alerts:
+        render_compact_alert_card(alert)
+else:
+    st.success("✓ No districts currently at High or Critical risk. System monitoring active.")
+
+st.divider()
+
 
 # -----------------------------------------------------------------------------
 # DEMO SCENARIO ROW
@@ -571,6 +756,7 @@ with col_output:
                 st.stop()
 
         # Render in this order:
+        render_alert_mode_banner(result, district)   # ← Scenario 3: only shows for High/Critical
         render_risk_banner(result)             # ← banner up top
         render_district_context_card(result)   # ← Phase D-2: 4-metric context grid
         render_action_card(result)
