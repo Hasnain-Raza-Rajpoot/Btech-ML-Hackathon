@@ -714,7 +714,7 @@ with col_input:
     )
     rainfall = st.number_input(
         "Rainfall today (mm)", key="in_rainfall",
-        min_value=0.0, max_value=500.0, step=1.0,
+        min_value=0.0, max_value=5000.0, step=1.0,
         help="Total rainfall recorded today in millimeters",
     )
     soil_condition = st.radio(

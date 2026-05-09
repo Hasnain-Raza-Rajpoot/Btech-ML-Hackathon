@@ -1,0 +1,6 @@
+team_name,institution,district,risk_level,confidence_pct,top_feature,submitted_at
+Zehn-e-Machine,Information Technology University (ITU),Nowshera,Critical,98.4,water_area_km2,2026-05-09 11:14:37
+Zehn-e-Machine,Information Technology University (ITU),Jacobabad,Low,3.6,water_area_km2,2026-05-09 11:14:37
+Zehn-e-Machine,Information Technology University (ITU),Sindh_District,Critical,98.4,water_area_km2,2026-05-09 11:14:37
+Zehn-e-Machine,Information Technology University (ITU),KP_District,Low,3.5,water_area_km2,2026-05-09 11:14:37
+Zehn-e-Machine,Information Technology University (ITU),Balochistan_District,Low,3.5,water_area_km2,2026-05-09 11:14:37
